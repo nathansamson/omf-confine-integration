@@ -159,11 +159,14 @@ module Confine
             response = OMF::Services.confine.allocateSlice :name => "GOOGLE"
             
             if response.elements.first.name == "SLICE_ID"
-                puts "OK " + response.elements.first.text.to_i.to_s
+                prefix = 'omf.pats' + response.elements.first.text
             else
                 puts "ERROR " + response.elements.first.text
             end
             
+            File.open NodeHandler.PREFIX_FILE, 'w' do |f|
+                f.write prefix
+            end
         end
         
         def get_binding
