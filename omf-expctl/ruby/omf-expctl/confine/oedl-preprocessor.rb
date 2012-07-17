@@ -48,9 +48,16 @@ module Confine
         alias :property :prop
         
         def defTopology(refName, nodeArray = nil, &block)
+            topo = Topology.create(refName, nodeArray)
+            if (! block.nil?)
+                block.call(topo)
+            end
+            return topo
         end
         
         def defPrototype(refName, name = nil, &block)
+            p = Prototype.create(refName)
+            p.name = name
         end
         
         def defGroup(groupName, selector = nil, &block)
@@ -66,12 +73,20 @@ module Confine
         end
         
         def group(groupName, &block)
+            ns = NodeSet[groupName.to_s]
+            if (ns == nil)
+                return EmptyGroup.new
+            end
+            return RootNodeSetPath.new(ns, nil, nil, block)
         end
         
         def resource(resName)
         end
         
         def allGroups(&block)
+            NodeSet.freeze
+            ns = DefinedGroupNodeSet.instance
+            return RootNodeSetPath.new(ns, nil, nil, block)
         end
         
         def allNodes!(&block)
@@ -81,12 +96,22 @@ module Confine
         end
         
         def onEvent(name, consumeEvent = false, &block)
+            if name != :EXPERIMENT_DONE
+                yield
+            end
         end
         
         def every(name, interval = 60, initial = nil, &block)
+            yield block
         end
         
         def everyNS(selector, interval = 60, &block)
+            ns = NodeSet[nodesSelector]
+            if ns == nil
+                raise "Every: Unknown node set '#{nodesSelector}"
+            end
+            path = RootNodeSetPath.new(ns)
+            path.call &block
         end
         
         def antenna(x, y, precision = nil)
@@ -130,6 +155,15 @@ module Confine
                                          (node.w0.to_s) + 
                                          (node.w1.to_s)
             end
+            
+            response = OMF::Services.confine.allocateSlice :name => "GOOGLE"
+            
+            if response.elements.first.name == "SLICE_ID"
+                puts "OK " + response.elements.first.text.to_i.to_s
+            else
+                puts "ERROR " + response.elements.first.text
+            end
+            
         end
         
         def get_binding
