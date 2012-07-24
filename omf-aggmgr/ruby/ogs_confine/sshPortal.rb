@@ -12,7 +12,7 @@ module Confine
 	
 	    def initialize
 	        @slices = Hash.new
-	        @sliceId = 133
+	        @sliceId = 141
 	    end
 	    
 	    def createSlice
@@ -138,7 +138,6 @@ module Confine
                 
                     ch.on_data do |c, data|
                         response += data
-                        puts "RES: #{data}"
                     end
                     
                     ch.on_extended_data do |c, type, data|
@@ -148,7 +147,6 @@ module Confine
                     end
                     
                     ch.on_close do
-                        puts "STARET"
                         start ssh, slice_id
                     end
                 end
@@ -165,8 +163,6 @@ module Confine
 			sliver[:location][:z] = (slice[:z] += 1)
 			sliver[:location][:name] = "VirtualWorld.#{slice_id}"
 			sliver[:location][:testbedname] = slice[:info][:testbed]
-			puts "SLIVER???"
-			puts sliver.inspect
             sliver
 	    end
 	    
@@ -192,7 +188,7 @@ module Confine
 config sliver '#{sliver_id}'
     option user_pubkey     "#{ssh_pub_key}"
     option fs_template_url "http://143.129.80.193/images/omf-openwrt-trunk-rootfs-latest.tar.gz"
-    option exp_data_url    "http://distro.confine-project.eu/misc/exp-data-hello-world-openwrt.tgz"
+    option exp_data_url    "http://143.129.80.193/images/omf-pats-experiment-data.tar.gz"
     option exp_name        "hello-openwrt-experiment"
     option vlan_nr         f#{sliver_id[-2..-1]}    # mandatory for if-types isolated
     option if00_type	   internal

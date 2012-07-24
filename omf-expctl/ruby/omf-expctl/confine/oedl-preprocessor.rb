@@ -10,18 +10,22 @@ end
 
 module Confine
 
+    # A node with extra info.
     module Node
         def confineInit
             @e0 = @e1 = @w0 = @w1 = false
         end
     
+        # Changed configure path function
+        # When configuring a path, store that it is being used.
         def configure path, value, status = 'Unknown'
-            if path[0] == "net" && path[1] == 'w0'
-                @w0 = true
+            if path[0] == "net" && path[1] == 'e0'
+                @e0 = true
             end
         end
     end
 
+    # Alternative OEDL processor, with different side effects
     class OEDLPreprocessor
         include Singleton
         include OMF::EC::NodeSetHelper
@@ -147,6 +151,7 @@ module Confine
         def ls(xpath = nil)
         end
         
+        # Print a small overview for the nodes
         def printOverview
             @nodes.each do |node|
                 puts node.nodeID + " " + (node.e0.to_s) +
@@ -154,7 +159,10 @@ module Confine
                                          (node.w0.to_s) + 
                                          (node.w1.to_s)
             end
-            
+        end
+        
+        # Start the reservation.
+        def startReservation 
             confine = OMF::Services.confine
             response = confine.allocateSlice
             
@@ -168,17 +176,18 @@ module Confine
             
             @nodes.each do |node|
                 confine = OMF::Services.confine
-                puts "Creating #{node.name.type}"
+                puts "Creating #{node.nodeID}"
+                
+                # Not looking at interface yet, just reserve 2 wired
+                # and 2 wireless links.
+                # Also not looking at the "imageID".
                 g = confine.allocateSliverGroup( :sliceid => id, 
                                              :names => node.nodeID,
                                              :nwifi => 2.to_s,
                                              :neth => 2.to_s,
                                              :imageid => '0',
                                             )
-                #x = g.elements.first 
-                #puts x.inspect
-                # puts x['SLIVER']['IP']
-                puts "DONE"
+                puts "Reserved #{node.nodeID}"
             end
             
             File.open NodeHandler.PREFIX_FILE, 'w' do |f|

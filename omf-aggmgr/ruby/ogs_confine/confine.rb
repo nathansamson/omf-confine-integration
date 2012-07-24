@@ -171,7 +171,7 @@ class ConfineService < GridService
     	end
     	puts "D"
 
-		# SliceManagerService.associateResourcesToSlice('experiment.#{sliceid}', names_str, PUBSUB_DOMAIN)
+		SliceManagerService.associateResourcesToSlice(sliverx[:hrn], names_str, PUBSUB_DOMAIN)
 
 		# SUCCESSFULL
 		replyXML = InventoryService.buildXMLReply("SLIVERGROUP", sliverXML, "Failed to allocate a new slivers.") { |root,sliverXML|
