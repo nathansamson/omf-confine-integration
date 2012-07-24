@@ -11,4 +11,4 @@ puts "I PREPARED... #{property.confine_experiment_file}"
 
 Confine::OEDLPreprocessor.instance.printOverview
 
-Experiment.done
+#Experiment.done

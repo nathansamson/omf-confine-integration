@@ -149,23 +149,40 @@ module Confine
         
         def printOverview
             @nodes.each do |node|
-                node.w0 = true
                 puts node.nodeID + " " + (node.e0.to_s) +
                                          (node.e1.to_s) + 
                                          (node.w0.to_s) + 
                                          (node.w1.to_s)
             end
             
-            response = OMF::Services.confine.allocateSlice :name => "GOOGLE"
+            confine = OMF::Services.confine
+            response = confine.allocateSlice
             
-            if response.elements.first.name == "SLICE_ID"
-                prefix = 'omf.pats' + response.elements.first.text
+            slice_el = response.elements.first
+            if slice_el.name == "SLICE"
+                id = slice_el.elements['SLICE_ID'].first
+                domain = slice_el.elements['DOMAIN'].first
             else
-                puts "ERROR " + response.elements.first.text
+                puts "ERROR " + slice_el.text
+            end
+            
+            @nodes.each do |node|
+                confine = OMF::Services.confine
+                puts "Creating #{node.name.type}"
+                g = confine.allocateSliverGroup( :sliceid => id, 
+                                             :names => node.nodeID,
+                                             :nwifi => 2.to_s,
+                                             :neth => 2.to_s,
+                                             :imageid => '0',
+                                            )
+                #x = g.elements.first 
+                #puts x.inspect
+                # puts x['SLIVER']['IP']
+                puts "DONE"
             end
             
             File.open NodeHandler.PREFIX_FILE, 'w' do |f|
-                f.write prefix
+                f.write domain
             end
         end
         
