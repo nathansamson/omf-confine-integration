@@ -77,6 +77,7 @@ class ConfineService < GridService
 		resultTestbed = inv.addTestbed(result[:testbed])
 	end
 
+    # For now we only use the default_slice.
 	# SliceManagerService.createSlice(result['testbed'],PUBSUB_DOMAIN)
 
 	replyXML = InventoryService.buildXMLReply("SLICE", result, "Failed to allocate a new slice.") { |root,result|
@@ -142,26 +143,18 @@ class ConfineService < GridService
   
 	sliverXML = []
 	
-	puts names.class
 	if names.is_a?(String)
 	    names = [names]
 	else
 	    names = names.to_ary
 	end
-	puts names.class
 	names_str = names.join(',')
-	puts "SS #{sliceid}"
-	puts "SS #{names}"
-	puts "SS #{imageid}"
-	puts "SS #{nwifi}"
-	puts "SS #{neth}"
 	begin
 		slivers = getPortal.createSliverGroup(sliceid.to_s, names, 
 							"imageId" => Integer(imageid), 
 							"n_wifi" => Integer(nwifi), 
 							"n_eth" => Integer(neth))
 		
-		puts "C"
 		doDB do |inv|
 			for i in 0..(names.length-1)
 				location_result = inv.addLocation(makeDBLocation(slivers[i][:location]))
@@ -169,9 +162,10 @@ class ConfineService < GridService
 				sliverXML[i] = slivers[i][:node]
 			end
     	end
-    	puts "D"
 
-		SliceManagerService.associateResourcesToSlice(sliverx[:hrn], names_str, PUBSUB_DOMAIN)
+
+        fqn_names = slivers.map do |sliver| sliver[:node][:hrn] end.join(',')
+		SliceManagerService.associateResourcesToSlice('default_slice', fqn_names, PUBSUB_DOMAIN)
 
 		# SUCCESSFULL
 		replyXML = InventoryService.buildXMLReply("SLIVERGROUP", sliverXML, "Failed to allocate a new slivers.") { |root,sliverXML|
@@ -179,11 +173,10 @@ class ConfineService < GridService
 				sliverElem = root.add_element("SLIVER")
 				InventoryService.addXMLElement(sliverElem, "HOSTNAME", "#{sliverx[:hostname]}")
 				InventoryService.addXMLElement(sliverElem, "HRN", "#{sliverx[:hrn]}")
-      				InventoryService.addXMLElement(sliverElem, "CONTROL_IP", "#{sliverx[:control_ip]}")
+      			InventoryService.addXMLElement(sliverElem, "CONTROL_IP", "#{sliverx[:control_ip]}")
 				InventoryService.addXMLElement(sliverElem, "CONTROL_MAC", "#{sliverx[:control_mac]}")
 			}
 		}
-		puts "E"
 	rescue HTTPStatus::InternalServerError
 		raise HTTPStatus::InternalServerError
 	rescue Exception => ex

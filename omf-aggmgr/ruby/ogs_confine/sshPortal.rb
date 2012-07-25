@@ -53,35 +53,33 @@ module Confine
 	            Net::SSH.start(ip, 'root', :password => 'confine') do |ssh|
 	                channel = ssh.open_channel do |ch|
 	                    ch.exec "confine_sliver_allocate #{slice_id}" do  |ch, success|
-	                        response = ''
+	                        stdout = stderr = ''
 	                        ch.send_data sliver_config
 	                        ch.eof!
 	                        abort "Failure" unless success
 	                    
 	                        ch.on_data do |c, data|
-	                            response += data
+	                            stdout += data
 	                        end
 	                        
 	                        ch.on_extended_data do |c, type, data|
-	                            #puts "ERROR"
-	                            #
-	                            #success = false
-	                            puts data
+	                            stderr += data
 	                        end
 	                        
 	                        ch.on_close do
-	                            #return unless success
-	                            response.gsub! /^.*option state.*$/, ''
-	                            response.gsub! slice_id, sliver_id
-	                            omf_name = "#{hostname}.#{slice[:info][:testbed]}"
-	                            response += "       option omf_name '#{omf_name}'"
+	                            state = retrieve_option stdout 'state'
+	                            if state != 'allocated'
+	                                raise Exception.new "Allocation failed"
+	                            end
 	                            
-	                            puts response
-	                            puts "ADD & DEPLOY"
-	                            sliver = deploy(ssh, slice, slice_id, response)
+	                            stdout.gsub! /^.*option state.*$/, ''
+	                            stdout.gsub! slice_id, sliver_id
+	                            omf_name = "#{hostname}.#{slice[:info][:testbed]}"
+	                            stdout += "       option omf_name '#{omf_name}'"
+	                            
+	                            sliver = deploy(ssh, slice, slice_id, stdout)
 	                            sliver[:node][:hostname] = hostname
                                 sliver[:node][:hrn] = "#{omf_name}"
-	                            puts sliver.inspect
 	                            slivers << sliver
 	                        end
 	                    end
@@ -125,28 +123,27 @@ module Confine
 	    end
 	    
 	    def deploy ssh, slice, slice_id, sliver_state
-	        puts "DEPM"
-	        puts slice
-	        puts slice_id
 	        channel = ssh.open_channel do |ch|
                 ch.exec "confine_sliver_deploy #{slice_id}" do  |ch, success|
-                    response = ''
-                    puts sliver_state
+                    stderr = stdout = ''
                     ch.send_data sliver_state
                     ch.eof!
                     abort "Failure" unless success
                 
                     ch.on_data do |c, data|
-                        response += data
+                        stdout += data
                     end
                     
                     ch.on_extended_data do |c, type, data|
-                        #puts "ERROR"
-                        #
-                        puts "EXT " + data
+                        stderr += data
                     end
                     
                     ch.on_close do
+                        state = retrieve_option stdout 'state'
+                        if state != 'deployed'
+                            raise Exception.new "Deployment failed"
+                        end
+                    
                         start ssh, slice_id
                     end
                 end
@@ -169,12 +166,21 @@ module Confine
 	    def start ssh, slice_id
 	        channel = ssh.open_channel do |ch|
 	            ch.exec "confine_sliver_start #{slice_id}" do |ch, success|
+	                stderr = stdout = ''
+	            
 	                ch.on_data do |c, data|
-	                    puts data
+	                    stdout += data
 	                end
 	                
 	                ch.on_extended_data do |c, x, data|
-	                    puts "RRROR" + data
+	                    stderr += data
+	                end
+	                
+	                ch.on_close do
+	                    state = retrieve_option stdout 'state'
+	                    if state != 'started'
+	                        raise Exception.new 'Starting failed...'
+	                    end
 	                end
 	            end
 	        end
@@ -182,7 +188,7 @@ module Confine
 	    end
 	    
 	    def generate_sliver_config sliver_id
-	        ssh_pub_key = File.open(SSH_PUB_FILE).read.delete "\n"
+	        ssh_pub_key = File.open(SSH_PUB_FILE).read.chomp
 	    
 	        <<-EOF
 config sliver '#{sliver_id}'
